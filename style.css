@@ -1,0 +1,35 @@
+body {
+	font-family: "Verdana", sans-serif;
+	font-size: 12px;
+	font-size: bold;
+	text-shadow: 1px 1px 0px #BBB;
+	background-color: #FFF;
+}
+
+div#banned {
+	color: #AA0000;
+	font-weight: bold;
+	width: 800px;
+	border: 1px solid #A00;
+	border-bottom: 0px;
+	margin: 0 auto;
+	margin-top: 10px;
+	margin-bottom: 10px;
+}
+
+div.ban {
+	padding: 10px;
+	border-bottom: 1px solid #A00;
+}
+
+div#title {
+	width: 800px;
+	margin: 0 auto;
+	border: 1px solid #AAA;
+	margin-top: 10px;
+	margin-bottom: 10px;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	text-align: center;
+	font-size: 24px;
+}
