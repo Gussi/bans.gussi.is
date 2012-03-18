@@ -235,5 +235,5 @@ $ultraban = new ultraban(new PDO('mysql:host=localhost;dbname=bukkit', 'bukkit',
 		});
 	});
 	</script>
-<body>
+</body>
 </html>
