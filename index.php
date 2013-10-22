@@ -1,20 +1,18 @@
 <?php
 /**
- * Ultraban
+ * SandkassinnBans
  *
  * @author Gussi <gussi@gussi.is>
  */
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-class ultraban {
+class SandkassinnBans {
 	private $db;
-	const TYPE_BAN = 0;
-	const TYPE_IPBAN = 1;
-	const TYPE_WARN = 2;
-	const TYPE_KICK = 3;
-	const TYPE_FINE = 4;
-	const TYPE_UNBAN = 5;
-	const TYPE_JAIL = 6;
-	const TYPE_PERMABAN = 9;
+	const TYPE_PERMABAN = 'permaban';
+	const TYPE_PARDON = 'pardon';
+	const TYPE_WARNING = 'warning';
+	const TYPE_TEMPBAN = 'tempban';
 
 	public function __construct(PDO $db) {
 		$this->db = $db;
@@ -24,8 +22,8 @@ class ultraban {
 		$param = array();
 		$sql = '
 			SELECT *
-			FROM `banlist`
-			WHERE 1=1';
+			FROM `sandkassinn_bans`
+			WHERE `type` != "compromised"';
 
 		foreach($filters as $filter => $value) {
 			if(empty($value)) continue;
@@ -56,7 +54,7 @@ class ultraban {
 		$tmp_sql = '';
 
 		if(isset($value['name'])) {
-			$tmp_sql = '`name` LIKE ?';
+			$tmp_sql = '`banned` LIKE ?';
 			$param[] = '%'.$value['name'].'%';
 		}
 
@@ -72,7 +70,7 @@ class ultraban {
 			if(!empty($tmp_sql)) {
 				$tmp_sql .= ' OR ';
 			}
-			$tmp_sql .= '`admin` LIKE ?';
+			$tmp_sql .= '`executor` LIKE ?';
 			$param[] = '%'.$value['admin'].'%';
 		}
 
@@ -82,7 +80,7 @@ class ultraban {
 	}
 
 	private function filter_name(&$sql, &$param, $value) {
-		$sql .= ' AND `name` = ?';
+		$sql .= ' AND `banned` = ?';
 		$param[] = $value;
 	}
 
@@ -92,7 +90,7 @@ class ultraban {
 	}
 
 	private function filter_admin(&$sql, &$param, $value) {
-		$sql .= ' AND `admin` = ?';
+		$sql .= ' AND `executor` = ?';
 		$param[] = $value;
 	}
 
@@ -102,7 +100,7 @@ class ultraban {
 	}
 }
 
-$ultraban = new ultraban(new PDO('mysql:host=localhost;dbname=bukkit', 'bukkit', 'bukkit'));
+$SandkassinnBans = new SandkassinnBans(new PDO('mysql:host=localhost;dbname=bukkit_v4', 'bukkit', 'bukkit'));
 ?>
 <!DOCTYPE html>
 <html>
@@ -154,8 +152,9 @@ $ultraban = new ultraban(new PDO('mysql:host=localhost;dbname=bukkit', 'bukkit',
 					</tr>
 					<?php
 					$options = array(
-						'order_by'		=> 'time',
+						'order_by'		=> 'id',
 						'order_dir'		=> 'desc',
+						'limit'			=> 10,
 					);
 					$filters = array();
 					if(isset($_POST)) {
@@ -171,28 +170,28 @@ $ultraban = new ultraban(new PDO('mysql:host=localhost;dbname=bukkit', 'bukkit',
 							}
 						}
 					}
-					$bans = $ultraban->get($filters, $options);
+					$bans = $SandkassinnBans->get($filters, $options);
 					$type_btn = function($ban) {
-						if(time() > $ban['temptime'] && $ban['type'] == Ultraban::TYPE_BAN && $ban['temptime'] != 0) {
-							return '<span class="label label-info">ÚTRUNNIÐ</span>';
-						}
 						switch($ban['type']) {
-							case Ultraban::TYPE_BAN:
-								if($ban['temptime'] == 0) {
-									return '<span class="label label-important">ENDANLEGT</span>';
+							case SandkassinnBans::TYPE_TEMPBAN:
+								if($ban['date_expire'] < time()) {
+									return '<span class="label label-info">Útrunnið</span>';
 								}
-								return '<span class="label label-important">BANNAÐUR</span>';
+								return '<span class="label label-important">Tímabundið</span>';
 								break;
-							case Ultraban::TYPE_UNBAN:
-								return '<span class="label label-success">SÝKNAÐUR</span>';
+							case SandkassinnBans::TYPE_PERMABAN:
+								return '<span class="label label-important">Endanlegt</span>';
 								break;
-							case Ultraban::TYPE_WARN:
-								return '<span class="label label-warning">VIÐVÖRUN</span>';
+							case SandkassinnBans::TYPE_PARDON:
+								return '<span class="label label-success">Aflétt</span>';
+								break;
+							case SandkassinnBans::TYPE_WARNING:
+								return '<span class="label label-warning">Aðvörun</span>';
 								break;
 						}
 					};
 					foreach($bans as $ban) {
-						$days = floor(($ban['temptime']-$ban['time'])/60/60/24);
+						$days = floor(($ban['date_expire']-$ban['date_executed'])/60/60/24);
 						printf("
 							<tr>
 								<td>%s</td>
@@ -203,11 +202,11 @@ $ultraban = new ultraban(new PDO('mysql:host=localhost;dbname=bukkit', 'bukkit',
 								<td>%s</td>
 							</tr>"
 							, $ban['id']
-							, $ban['name']
+							, $ban['banned']
 							, $ban['reason']
-							, $ban['admin']
-							, date('d.m.Y H:i', $ban['time'])
-							, $ban['temptime']
+							, $ban['executor']
+							, date('d.m.Y H:i', $ban['date_executed'])
+							, $ban['date_expire']
 								? sprintf(' í %s dag%s'
 									, $days
 									, substr($days, -1, 1) == '1'
